@@ -1,2 +1,1 @@
-Eksamensprrojekt Iomt4 F2025
-BodyMetrics v2.0
+BodyMetrics v2.0 - Eksamensprrojekt Iomt4 F2025
