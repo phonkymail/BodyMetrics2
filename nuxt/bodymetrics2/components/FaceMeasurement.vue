@@ -148,7 +148,6 @@ const startEsp32Scan = async (studentId: string) => {
   }
 }
 
-// Automatisk opdatering
 onMounted(() => {
   setInterval(async () => {
     const res = await fetch('/api/scale/data')
