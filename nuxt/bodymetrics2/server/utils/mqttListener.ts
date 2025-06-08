@@ -2,7 +2,7 @@ import mqtt from 'mqtt'
 
 let lastData = null
 
-const client = mqtt.connect('mqtts://172.20.10.3:8883', {
+const client = mqtt.connect('mqtts://<ip>:8883', {
   rejectUnauthorized: false  // Skip cert check (self-signed)
 })
 
