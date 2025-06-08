@@ -1,18 +1,13 @@
-//create_student_vue.bak
-
 <template>
   <div class="p-4 space-y-4">
     <h1 class="text-xl font-bold">Opret ny elev</h1>
 
-    <!-- Start kamera -->
     <button @click="startCamera" class="bg-blue-500 text-white px-4 py-2 rounded">
       Start kamera
     </button>
 
-    <!-- Webcam preview -->
     <video ref="video" autoplay playsinline class="w-64 h-48 bg-gray-200 rounded"></video>
 
-    <!-- Snapshot preview -->
     <div v-if="snapshot" class="w-64 h-48 mt-2">
       <img :src="snapshot" alt="Snapshot" class="rounded border" />
     </div>
@@ -21,7 +16,6 @@
       Tag billede
     </button>
 
-    <!-- Elevdata input -->
     <div class="space-y-2 mt-4">
       <input v-model="first_name" placeholder="Fornavn" class="w-full p-2 border rounded" />
       <input v-model="last_name" placeholder="Efternavn" class="w-full p-2 border rounded" />
@@ -57,7 +51,6 @@ let faceDescriptor: number[] | null = null
 
 const mediaStream = ref<MediaStream | null>(null)
 
-// Indlæs face-api modeller
 onMounted(async () => {
   await Promise.all([
     faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
@@ -66,7 +59,6 @@ onMounted(async () => {
   ])
 })
 
-// Stop kameraet
 const stopCamera = () => {
   if (mediaStream.value) {
     mediaStream.value.getTracks().forEach(track => track.stop())
@@ -74,12 +66,10 @@ const stopCamera = () => {
   }
 }
 
-// Stop kamera ved unmount
 onUnmounted(() => {
   stopCamera()
 })
 
-// Start kamera
 const startCamera = async () => {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true })
@@ -93,7 +83,6 @@ const startCamera = async () => {
   }
 }
 
-// Tag snapshot og find ansigt
 const takeSnapshot = async () => {
   if (!video.value) return
   const canvas = document.createElement('canvas')
@@ -117,7 +106,6 @@ const takeSnapshot = async () => {
   faceDescriptor = Array.from(detection.descriptor)
 }
 
-// Gem elev
 const saveStudent = async () => {
   if (!snapshot.value || !first_name.value || !last_name.value || !brith.value || !class_id.value || !school_id.value) {
     alert('Udfyld alle felter og tag et billede')
