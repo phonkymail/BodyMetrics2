@@ -64,7 +64,6 @@ const chartOptions = {
   }
 }
 
-// WHO og Asiatisk reference-BMI
 const referenceAges = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
 const bmiWHO = [15.2, 15.5, 15.8, 16.2, 16.8, 17.5, 18.2, 19.0, 19.8, 20.5, 21.2]
 const bmiAsia = [14.6, 14.8, 15.0, 15.3, 15.7, 16.2, 16.8, 17.3, 17.9, 18.4, 19.0]
