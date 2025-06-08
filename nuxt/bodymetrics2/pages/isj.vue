@@ -13,7 +13,6 @@
       </button>
     </div>
 
-    <!-- Start måling -->
     <div class="mb-6">
       <button
         @click="showMeasurement = !showMeasurement"
@@ -26,7 +25,6 @@
       </div>
     </div>
 
-    <!-- Opret ny elev -->
     <div class="mb-6">
       <button
         @click="showCreateForm = !showCreateForm"
@@ -39,7 +37,6 @@
       </div>
     </div>
 
-    <!-- Klasse Dropdown -->
     <div v-if="classOptions.length" class="mb-4">
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
@@ -65,7 +62,6 @@
       </DropdownMenu>
     </div>
 
-    <!-- Elev Dropdown -->
     <div v-if="selectedClassId && filteredStudents.length" class="mb-6">
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
@@ -89,7 +85,6 @@
       </DropdownMenu>
     </div>
 
-    <!-- Elev visning -->
     <div v-if="selectedStudent" class="bg-white p-6 rounded shadow text-black">
       <p class="text-xl font-semibold mb-1">
         {{ selectedStudent.first_name }} {{ selectedStudent.last_name }}
@@ -102,7 +97,6 @@
         class="w-32 h-32 object-cover rounded border mb-4"
       />
 
-      <!-- Målinger -->
       <div v-if="measurements.length">
         <p class="font-medium mb-2">📏 {{ measurements.length }} målinger:</p>
         <ul class="text-sm list-disc ml-6 mb-4">
@@ -112,7 +106,6 @@
           </li>
         </ul>
 
-        <!-- Graf -->
         <LineChart
           :measurements="measurements"
           :birthDate="selectedStudent.brith"
