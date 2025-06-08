@@ -20,7 +20,6 @@ export default defineEventHandler(async (event) => {
 
     const db = await connectToDatabase()
 
-    // Parent check
     if (decoded.role === 'parent') {
       const student = await db.collection('Students').findOne({
         id: String(id),
@@ -32,7 +31,6 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Fetch measurements
     const measurements = await db
       .collection('Measurements')
       .find({ student_id: String(id) })
