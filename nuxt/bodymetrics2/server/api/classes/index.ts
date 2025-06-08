@@ -5,7 +5,6 @@ export default defineEventHandler(async () => {
 
   const classes = await db.collection('Classes').find().toArray()
 
-  // Sorter klasserne numerisk efter id (selvom de er strings)
   classes.sort((a, b) => Number(a.id) - Number(b.id))
 
   return classes
