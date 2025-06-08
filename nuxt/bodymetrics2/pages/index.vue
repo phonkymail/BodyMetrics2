@@ -6,7 +6,7 @@
     <div class="absolute inset-0 bg-black/60"></div>
 
     <div class="relative z-10 text-[#b8f5cc]">
-      <!-- Header -->
+
       <header class="w-full flex items-center justify-between px-6 sm:px-10 py-6 bg-amber-50 bg-opacity-90 shadow-md relative">
         <h1 class="text-2xl font-extrabold text-blue-700">BodyMetrics</h1>
         <div class="flex items-center gap-4">
@@ -29,7 +29,6 @@
         </div>
       </header>
 
-      <!-- Dropdown -->
       <div
         v-if="menuOpen"
         class="sm:hidden absolute right-6 top-[90px] bg-white bg-opacity-90 rounded shadow-md p-4 flex flex-col gap-4 text-[#333]"
@@ -37,7 +36,6 @@
         <NuxtLink to="/info" class="hover:underline">ℹ️ Info</NuxtLink>
       </div>
 
-      <!-- Hero + måling -->
       <main class="text-center py-16 px-6">
         <h2 class="text-4xl sm:text-5xl font-extrabold mb-4 drop-shadow-lg">
           Velkommen til BodyMetrics
