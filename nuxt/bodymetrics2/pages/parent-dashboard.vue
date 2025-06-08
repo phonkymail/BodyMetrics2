@@ -27,8 +27,6 @@
           <p><strong>Født:</strong> {{ child.brith }}</p>
           <p><strong>Klasse:</strong> {{ child.class_name }}</p>
 
-
-          <!-- Billede -->
           <img
             v-if="child.photo"
             :src="child.photo"
@@ -36,7 +34,6 @@
             class="mt-3 w-32 h-32 object-cover rounded border"
           />
 
-          <!-- Målinger -->
           <div v-if="child.measurements?.length" class="mt-4">
             <p><strong>Målinger:</strong> {{ child.measurements.length }}</p>
             <ul class="mt-2 text-sm list-disc ml-6">
@@ -49,7 +46,6 @@
               </li>
             </ul>
 
-            <!-- 📊 Graf -->
             <LineChart
               class="mt-4"
               :measurements="child.measurements"
@@ -77,7 +73,6 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import LineChart from '@/components/LineChart.vue'
-
 
 const children = ref([])
 const classMap = ref({})
