@@ -1,4 +1,3 @@
-// ✅ server/api/students/index.ts
 import { connectToDatabase } from '../../utils/mongo'
 import jwt from 'jsonwebtoken'
 
@@ -37,8 +36,6 @@ export default defineEventHandler(async (event) => {
   }
 })
 
-
-// ✅ client-side fetch methods for isj.vue
 const fetchStudents = async () => {
   const token = localStorage.getItem('admin_token') || localStorage.getItem('nurse_token')
   try {
