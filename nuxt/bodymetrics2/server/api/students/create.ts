@@ -31,15 +31,12 @@ export default defineEventHandler(async (event) => {
   const nextId = numericIds.length > 0 ? Math.max(...numericIds) + 1 : 1
   const newId = nextId.toString() // 👈 Gemmes som string
 
-  // Generér filnavn
   const filename = `${first_name.toLowerCase()}_${newId}.jpg`
   const filepath = path.resolve('./public/faces', filename)
 
-  // Gem billede fra base64
   const base64Data = image.replace(/^data:image\/jpeg;base64,/, '')
   fs.writeFileSync(filepath, base64Data, 'base64')
 
-  // Opret elev i databasen
   const student = {
     id: newId, // 👈 string, men unikt og numerisk korrekt
     first_name,
