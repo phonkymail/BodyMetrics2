@@ -1,206 +1,133 @@
-import bluetooth
-import time
-from micropython import const
-from ubinascii import hexlify
+# main.py
+
 import network
-from time import sleep
-import machine
+import time
+import ubluetooth
+import ubinascii
 import ujson
+from machine import Pin, time_pulse_us, reset
 from umqtt.simple import MQTTClient
+import config
 
-# BLE IRQ constants
-_IRQ_SCAN_RESULT = const(5)
-_IRQ_SCAN_DONE = const(6)
-_IRQ_PERIPHERAL_CONNECT = const(7)
-_IRQ_PERIPHERAL_DISCONNECT = const(8)
-_IRQ_GATTC_SERVICE_RESULT = const(9)
-_IRQ_GATTC_SERVICE_DONE = const(10)
-_IRQ_GATTC_CHARACTERISTIC_RESULT = const(11)
-_IRQ_GATTC_CHARACTERISTIC_DONE = const(12)
-_IRQ_GATTC_NOTIFY = const(18)
+TRIG_PIN = 25
+ECHO_PIN = 27
 
-# BLE setup
-TARGET_MAC = b'\x6C\xEC\xEB\x3C\x10\x0F'
-ble = bluetooth.BLE()
+trig = Pin(TRIG_PIN, Pin.OUT)
+echo = Pin(ECHO_PIN, Pin.IN)
+
+def read_distance_cm():
+    trig.value(0)
+    time.sleep_us(2)
+    trig.value(1)
+    time.sleep_us(10)
+    trig.value(0)
+    try:
+        duration = time_pulse_us(echo, 1, 30000)
+        distance_cm = (duration / 2) / 29.1
+        dis = 193-distance_cm
+        return round(dis, 1)
+    except OSError:
+        return None
+
+ble = ubluetooth.BLE()
 ble.active(True)
 
-# MQTT settings
-MQTT_BROKER = "4.246.143.71"
-MQTT_PORT = 1883
-MQTT_TOPIC = b"measurment"
-MQTT_CLIENT_ID = b"esp32-iot4"
+mqtt = None
+last_weight = None
+weight_buffer = []
+weight_sent = False
 
-# Distance sensor
-class DistanceSensor:
-    def __init__(self, trigger_pin, echo_pin):
-        self.trigger = machine.Pin(trigger_pin, machine.Pin.OUT)
-        self.echo = machine.Pin(echo_pin, machine.Pin.IN)
-        self.trigger.value(0)
-
-    def measure_distance(self):
-        self.trigger.value(1)
-        time.sleep_us(10)
-        self.trigger.value(0)
-
-        while self.echo.value() == 0:
-            pass
-        start_time = time.ticks_us()
-
-        while self.echo.value() == 1:
-            pass
-        stop_time = time.ticks_us()
-
-        elapsed_time = time.ticks_diff(stop_time, start_time)
-        return (elapsed_time * 0.0343) / 2
-
-def average_filtered_distance(sensor, num=20):
-    values = []
-    for _ in range(num):
-        try:
-            dist = sensor.measure_distance()
-            values.append(dist)
-            time.sleep(0.03)
-        except:
-            pass
-    if len(values) < 5:
-        raise Exception("Too few valid measurements.")
-    values.sort()
-    filtered = values[2:-2]
-    return sum(filtered) / len(filtered)
-
-# Init sensor
-sensor = DistanceSensor(trigger_pin=27, echo_pin=25)
-
-# Wi-Fi
 def connect_wifi():
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     if not wlan.isconnected():
-        print("Connecting to Wi-Fi...")
-        wlan.connect("ASUSm2", "rafal1978")
-        while not wlan.isconnected():
+        print("🔌 Connecting to Wi-Fi...")
+        wlan.connect(config.WIFI_SSID, config.WIFI_PASSWORD)
+        for _ in range(20):
+            if wlan.isconnected():
+                break
             time.sleep(1)
-    print("Wi-Fi connected, IP:", wlan.ifconfig()[0])
+    if wlan.isconnected():
+        print("✅ Wi-Fi connected, IP:", wlan.ifconfig()[0])
+    else:
+        print("❌ Failed to connect")
+        raise RuntimeError("Wi-Fi failed")
 
-# MQTT
+def parse_miscale_advertisement(adv_data):
+    data = bytes(adv_data)
+    for i in range(len(data) - 6):
+        if data[i] == 0x16 and data[i+1] == 0x1D and data[i+2] == 0x18:
+            flags = data[i + 3]
+            weight_raw = data[i + 4] | (data[i + 5] << 8)
+            if (flags & 0x01) == 0:
+                return weight_raw / 200.0
+            else:
+                return weight_raw / 100.0
+    return None
+
+def bt_irq(event, data):
+    global last_weight, weight_buffer, weight_sent
+
+    if event == 5:  
+        addr_type, addr, adv_type, rssi, adv_data = data
+        mac = ubinascii.hexlify(addr).decode().upper()
+
+        if mac == config.TARGET_MAC:
+            weight = parse_miscale_advertisement(adv_data)
+            if weight and weight > 10:
+                weight_buffer.append(weight)
+                if len(weight_buffer) > 3:
+                    weight_buffer.pop(0)
+
+                if len(weight_buffer) == 3 and all(w == weight_buffer[0] for w in weight_buffer):
+                    if weight != last_weight:
+                        distance = read_distance_cm()
+                        payload = ujson.dumps({
+                            "weight": round(weight, 2),
+                            "distance_cm": distance
+                        })
+                        print(f"⚖️ Weight: {weight:.2f} kg | 📏 Distance: {distance} cm")
+                        mqtt.publish(config.MQTT_TOPIC, payload)
+                        last_weight = weight
+                        weight_sent = True
+                        ble.gap_scan(None)
+                        print("✅ Data sent. Rebooting...")
+                        time.sleep(1)
+                        reset()
+
+def start_scan():
+    global weight_buffer
+    weight_buffer = []
+    print("🔍 Scanning for weight...")
+    ble.irq(bt_irq)
+    ble.gap_scan(10000, 30000, 30000)
+
+def mqtt_callback(topic, msg):
+    print(f"📥 Received on {topic}: {msg}")
+    if msg == b"scan":
+        start_scan()
+
 def connect_mqtt():
     global mqtt
-    print("connecting to mqtt broker")
-    mqtt = MQTTClient(MQTT_CLIENT_ID, MQTT_BROKER, MQTT_PORT)
+    mqtt = MQTTClient(
+        config.MQTT_CLIENT_ID,
+        config.MQTT_BROKER,
+        port=config.MQTT_PORT,
+        ssl=config.MQTT_USE_TLS,
+        ssl_params={"cert_reqs": 0} if config.MQTT_SKIP_CERT_VERIFY else {}
+    )
+    mqtt.set_callback(mqtt_callback)
     mqtt.connect()
-    print("Connected to MQTT broker")
+    mqtt.subscribe(b"scale/control")
+    print("📡 Subscribed to scale/control")
 
-# BLE state
-conn_handle = None
-services_to_check = []
-current_service_index = 0
-notification_subscribed = False
-connected = False
+def main():
+    connect_wifi()
+    connect_mqtt()
+    print("📬 Waiting for MQTT command...")
+    while not weight_sent:
+        mqtt.wait_msg()
 
-# Weight decode
-def decode_weight(data):
-    if len(data) >= 6:
-        raw = int.from_bytes(data[4:6], "big")
-        return raw / 10.0
-    return 0.0
+main()
 
-def restart_scan():
-    global services_to_check, current_service_index, conn_handle, connected, notification_subscribed
-    services_to_check = []
-    current_service_index = 0
-    conn_handle = None
-    connected = False
-    notification_subscribed = False
-    print("Restarting scan in 2s...")
-    time.sleep(2)
-    try:
-        ble.gap_scan(20000)
-    except OSError as e:
-        print("Scan error:", e)
 
-# IRQ Handler
-def bt_irq(event, data):
-    global conn_handle, services_to_check, current_service_index, connected, notification_subscribed
-
-    if event == _IRQ_SCAN_RESULT:
-        addr_type, addr, adv_type, rssi, adv_data = data
-        print("BLE found:", hexlify(addr), "RSSI:", rssi)
-        if addr == TARGET_MAC and not connected:
-            print("Found scale:", hexlify(addr))
-            ble.gap_connect(addr_type, addr)
-
-    elif event == _IRQ_SCAN_DONE:
-        print("Scan complete")
-
-    elif event == _IRQ_PERIPHERAL_CONNECT:
-        conn_handle, _, _ = data
-        connected = True
-        print("Connected to scale")
-        ble.gattc_discover_services(conn_handle)
-
-    elif event == _IRQ_PERIPHERAL_DISCONNECT:
-        print("Scale disconnected")
-        restart_scan()
-
-    elif event == _IRQ_GATTC_SERVICE_RESULT:
-        _, start_handle, end_handle, uuid = data
-        services_to_check.append((start_handle, end_handle))
-
-    elif event == _IRQ_GATTC_SERVICE_DONE:
-        if services_to_check:
-            current_service_index = 0
-            start, end = services_to_check[current_service_index]
-            ble.gattc_discover_characteristics(conn_handle, start, end)
-
-    elif event == _IRQ_GATTC_CHARACTERISTIC_RESULT:
-        _, def_handle, value_handle, properties, uuid = data
-        if properties & 0x10:  # Notify property
-            if not notification_subscribed:
-                for _ in range(3):
-                    try:
-                        time.sleep_ms(200)
-                        ble.gattc_write(conn_handle, value_handle + 1, b'\x01\x00', 1)
-                        notification_subscribed = True
-                        print(f"Notification enabled (handle={value_handle})")
-                        break
-                    except OSError as e:
-                        print("Notification error:", e)
-                        time.sleep_ms(500)
-
-    elif event == _IRQ_GATTC_CHARACTERISTIC_DONE:
-        current_service_index += 1
-        if current_service_index < len(services_to_check):
-            start, end = services_to_check[current_service_index]
-            ble.gattc_discover_characteristics(conn_handle, start, end)
-
-    elif event == _IRQ_GATTC_NOTIFY:
-        _, value_handle, notify_data = data
-        weight = decode_weight(notify_data)
-        print("Weight:", weight, "kg")
-
-        try:
-            distance = average_filtered_distance(sensor)
-            print("Height:", round(distance, 2), "cm")
-            payload = ujson.dumps({
-                "weight": round(weight, 2),
-                "height": round(distance, 2)
-            })
-            mqtt.publish(MQTT_TOPIC, payload)
-        except Exception as e:
-            print("Distance error:", e)
-
-# Start sequence
-connect_wifi()
-
-print("Initializing BLE...")
-ble.irq(bt_irq)
-ble.gap_scan(20000)  
-time.sleep(1)  
-
-connect_mqtt()
-
-# Main loop
-while True:
-    time.sleep(1)
-
- 
