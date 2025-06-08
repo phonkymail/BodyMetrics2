@@ -2,7 +2,6 @@
   <div class="p-6 max-w-md mx-auto">
     <h1 class="text-2xl font-bold mb-4">🔐 Log ind</h1>
 
-
     <form @submit.prevent="handleLogin" class="space-y-4">
       <input
         v-model="email"
@@ -55,7 +54,6 @@ const handleLogin = async () => {
       body: { email: email.value, password: password.value }
     })
 
-    // Role-based handling
     const { token, role } = response
 
     if (role === 'parent') {
