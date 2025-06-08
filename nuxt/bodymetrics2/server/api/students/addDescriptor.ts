@@ -1,4 +1,3 @@
-// server/api/students/addDescriptor.ts
 import { readBody } from 'h3'
 import { connectToDatabase } from '../../utils/mongo'
 
