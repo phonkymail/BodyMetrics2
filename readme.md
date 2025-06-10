@@ -1,7 +1,5 @@
 # BodyMetrics v2.0 - 2025 
-  (BodyMetrics is a automated weight and height measurement system, including both backend and frontend. The system performs measurements with discreet and secure data processing.)
-
-Dario, Rafal & Phong
+  BodyMetrics is a automated weight and height measurement system, including both backend and frontend. The system performs measurements with discreet and secure data processing.
 
 Dependencencies:
 - Debian Linux
@@ -10,3 +8,5 @@ Dependencencies:
 - Ultrasonic sensor
 - Microcontroller esp32
 - BLE weight
+
+Dario, Rafal & Phong
